@@ -4,6 +4,7 @@
 const DigitalOceanApi = require('doapi');
 const NodeSSH = require('node-ssh');
 const inquirer = require('inquirer');
+const Vultr = require('vultr');
 
 // grouped module methods a-z
 const Readable = require('stream').Readable;
@@ -18,12 +19,12 @@ const configurations = {
 const prompt = inquirer.createPromptModule();
 const promptQuestions = [{
   type: 'input',
-  name: 'do_api_token',
-  message: 'Digital Ocean token:',
+  name: 'vultr_api_token',
+  message: 'Vultr api token:',
 }, {
   type: 'input',
   name: 'ssh_key_location',
-  message: 'Name of SSH key in ~/.ssh/ to connect to Streisand droplet:',
+  message: 'Name of SSH key in ~/.ssh/ to connect to Streisand server:',
 }, {
   type: 'input',
   name: 'domain',
@@ -38,35 +39,33 @@ let sshKey;
 // gather required info from user
 function getSessionInfo() {
   const sessionInfo = {
-    do_api_token: null,
+    vultr_api_token: null,
     ssh_key_location: null,
   };
 
   return prompt(promptQuestions).then((answers) => {
-    sessionInfo.do_api_token = answers.do_api_token;
+    sessionInfo.vultr_api_token = answers.vultr_api_token;
     sessionInfo.ssh_key_location = answers.ssh_key_location;
     sessionInfo.domain = answers.domain;
     sshKey = `${process.env.HOME}/.ssh/${sessionInfo.ssh_key_location}`;
-    client = new DigitalOceanApi({
-      token: sessionInfo.do_api_token,
-    });
+    client = new Vultr(sessionInfo.vultr_api_token);
     return sessionInfo;
   }).catch(error => console.log(error));
 }
 
 // find the latest instance of streisand from Digital Ocean and store it.
 function getCurrentServer(sessionInfo) {
-  console.log('finding current instance of Streisand. . .');
-  return client.dropletGetAll().then(droplets => droplets.filter((el) => {
-    if (el.name.search('streisand-') !== -1) {
-      return el.name;
-    }
-    return console.log('Could not find a droplet name starting with "streisand-" ');
-  })).then((droplet) => {
-    sessionInfo.old_server = droplet[0];
-    console.log(`The current server is: ${sessionInfo.old_server.name
-      } ${sessionInfo.old_server.networks.v4[0].ip_address}`);
-    return sessionInfo;
+  console.log('[API Request] Finding current instance of Streisand. . .');
+  return client.server.list().then(obj => {
+    return Object.keys(obj).forEach(key => {
+      if(obj[key].label.search('streisand') !== -1) {
+        sessionInfo.old_server = obj[key];
+        console.log(`The current server is: ${sessionInfo.old_server.name
+            } ${sessionInfo.old_server.gateway_v4}`);
+        return sessionInfo;
+      }
+      //return console.log('Could not find a droplet name starting with "streisand-" ');
+    });
   }).catch(error => console.error(error));
 }
 

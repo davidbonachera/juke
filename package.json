@@ -23,6 +23,7 @@
   "dependencies": {
     "doapi": "^0.1.2",
     "inquirer": "^1.2.3",
-    "node-ssh": "^4.0.1"
+    "node-ssh": "^4.0.1",
+    "vultr": "0.0.6"
   }
 }
